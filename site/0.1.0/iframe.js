@@ -153,6 +153,12 @@ function main() {
 		render();
 		requestLarge();
 	});
+	icon.addEventListener("mouseenter", function (e) {	
+		icon.style.backgroundColor = "#3388cc";
+	});
+	icon.addEventListener("mouseleave", function (e) {	
+		icon.style.backgroundColor = "blue";
+	});
 	//icon.style.display = "none";
 	document.body.appendChild(icon);
 

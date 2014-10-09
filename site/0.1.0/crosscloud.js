@@ -53,7 +53,7 @@
 
 		that.callbacks = {};
 		that.callbackHandleCount = 0;
-		that.options = options;
+		that.options = options || {};
 
 		window.addEventListener("message", function(event) {
 			//console.log("got message, checking origin", event);
@@ -128,16 +128,16 @@
 
 	pod._iframeSet = function(options) {
 		var that = this;
-		console.log('setting iframe properties', options);
+		//console.log('setting iframe properties', options);
 		["top", "left", "right", "position", "width", "height"].forEach(function(prop) {
 			if (prop in options) {
-				console.log('setting on div',prop,options[prop], this.iframediv);
+				//console.log('setting on div',prop,options[prop], this.iframediv);
 				this.iframediv.style[prop] = options[prop]
 			};
 		}, this);
 		["borderRadius", "boxShadow", "width", "height", "overflow"].forEach(function(prop) {
 			if (prop in options) {
-				console.log('setting on iframe',prop,options[prop], this.iframe);
+				//console.log('setting on iframe',prop,options[prop], this.iframe);
 				this.iframe.style[prop] = options[prop]
 			};
 		}, this);

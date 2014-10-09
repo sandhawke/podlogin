@@ -70,6 +70,8 @@ function main() {
 		// so we can just use it as the origin.  
 		
 		// TODO
+		whenDone();
+		//setTimeout(whenDone, 1000);
 	}
 
 	var disconnectFromPod = function (m) {
@@ -127,7 +129,6 @@ function main() {
 	}
 
 	var render = function() {
-		console.log('RENDER CALLED, mode', mode, d);
 
 		if (mode === "icon") {
 			panel.style.display="none";
@@ -145,16 +146,13 @@ function main() {
 
 	var b = document.body;
 
-	var errorMessageElement = document.getElementById("error");
-	errorMessageElement.style.display = "none";
+	var errorDiv = document.getElementById("error");
+	errorDiv.style.display = "none";
 
-	var d = document.createElement("div");
-	//d.innerHTML = "<p>Waiting.</p>";
-	document.body.appendChild(d)
 	document.body.style.margin = "0";
 	document.body.style.padding = "0";
 
-	icon = document.createElement("div");
+	icon = document.getElementById("icon");
 	icon.innerHTML = "Pod";
 	icon.style.margin = "0";
 	icon.style.padding = "1px"
@@ -177,31 +175,53 @@ function main() {
 		icon.style.backgroundColor = "blue";
 	});
 	icon.style.display = "none";
-	document.body.appendChild(icon);
 
-	var panel = document.createElement("div");
+	var panel = document.getElementById("panel");
 	document.body.style.backgroundColor = "white";
 	panel.style.backgroundColor = "white";
 	panel.style.padding = "1em";
-	panel.innerHTML = '<div style="float:right" id="x">x</div><h2>Crosscloud Pod Control</h2><p id="podurlprompt">Your Pod URL: <input id="podurl" type="text" size="30"></input></p>';
-	document.body.appendChild(panel);
+	icon.style.fontFamily = "Arial";
 	var closer = document.getElementById('x')
 	closer.addEventListener("click", function (e) {	
-		console.log('panel clicked');
 		mode = "icon";
 		render();
 		requestIcon();
 	});
-	var loginElement = document.getElementById('podurl');
-	loginElement.addEventListener("keypress", function(e) {
+	var podurlElement = document.getElementById('podurl')
+	podurlElement.addEventListener("keypress", function(e) {
 		var key = e.which || e.keyCode;
 		if (key == 13) {
-			console.log('got url');
-			document.getElementById('podurlprompt').style.display="none";
-			connectToPod(loginElement.value);
-			// display some progress...
-			// 
+			newurl();
 		}
+	}, true);
+	podurlElement.addEventListener("blur", function(e) {
+		newurl();
+	}, true);
+	var newurl = function () {
+		var podurl = podurlElement.value;
+		if (podurl == "") return;
+		console.log('got url', podurl);
+		document.getElementById('podurlprompt').style.display="none";
+		document.getElementById('podprogress').style.display="block";
+		document.getElementById('podprogress').innerHTML = "Connecting...";
+		var out = document.getElementById('selectedpodurl');
+		var now = Date.now();
+		var tx = podurl;
+		console.log(podurl, now, tx);
+
+		while (out.firstChild) { out.removeChild(out.firstChild); }
+		out.appendChild(document.createTextNode(tx));
+			//.innerHTML="<"+podurl+">";
+		//document.getElementById('selectedpodurl').innerHTML="<"+podurl+">";
+		document.getElementById('selectedpod').style.display="block";
+		connectToPod(podurl, function() {
+			document.getElementById('podprogress').style.display="none";
+			// sendToApp(op:'connected-to-pod');  // but not necessary authenticated so what's the point?
+		});
+	};
+	document.getElementById('changepodbutton').addEventListener("click", function(e) {
+		document.getElementById('podurlprompt').style.display="block";
+		document.getElementById('selectedpod').style.display="none";
 	});
 	panel.style.display = "none";
 
@@ -209,7 +229,6 @@ function main() {
 		button = document.createElement('button');
 		var t = document.createTextNode("X");
 		button.appendChild(t); 
-		d.appendChild(button);
 		
 		button.onclick = requestSmall;
 	*/	

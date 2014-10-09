@@ -116,11 +116,12 @@
 		// answering.  Before that, any messages we send will
 		// just be lost.  So we send pings until it answers,
 		// then we're really connected.
-		// (Of course, still not logged in.)
+		// (Of course, still not necessarily logged in.)
 		var that = this
 		var connect = function() {
 			//console.log('pinging iframe');
 			that.options.op = 'login-config';
+			that.options.seq = 0;
 			that._send(that.options);
 		};
 		that.pinger = setInterval(connect, 50);

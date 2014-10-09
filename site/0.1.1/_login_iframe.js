@@ -12,6 +12,11 @@
 
 function main() {
 
+	var podURL = window.location.href;
+
+	podURL = podURL.slice(0,podURL.lastIndexOf("/"));
+	
+
 	//
 	// MESSAGE PASSING TO LOGIN INFRAME (OUR PARENT)
 	//
@@ -33,12 +38,19 @@ function main() {
 			window.open("http://www.w3.org/");
 			// fails because of pop-up blockers; needs to be in event tree?
 			return;
+		} else if (message.op === "push") {
+
 		}
+
+
 
 		console.log('podlogin UNHANDLED', message);
 	}, false);
 
 	sendToApp({op:"awake"});
+
+	// fakepods alwauys has everybody logged in
+	sendToApp({op:"login", podURL:podURL, toApp:true});
 };
 
 
@@ -56,3 +68,5 @@ function onready() {
 }
 
 onready();
+
+console.log("lif-0");

@@ -2,13 +2,14 @@
 function main() {
 
 	//
-	// MESSAGE PASSING
+	// MESSAGE PASSING TO APP
 	//
 
 	var appOrigin = null;
 	var app = null;
 
 	var appConfig = null; 
+	var previousMessageSeq = -1;
 
 	var sendToApp = function (m) {
 
@@ -43,6 +44,14 @@ function main() {
 
 		var message = event.data
 		
+		if (message.seq) {
+			if (message.seq === previousMessageSeq) {
+				return;
+			} else {
+				previousMessageSeq = message.seq;
+			}
+		}
+		
 		if (message.op == "login-config") {
 
 			appConfig = message;
@@ -69,6 +78,29 @@ function main() {
 		console.log('UNHANDLED', message);
 
 	}, false);
+
+
+	//
+	// MESSAGE PASSING TO POD
+	//
+
+	var podURL = "";
+	var poddiv = document.createElement("div");
+	document.body.appendChild(poddiv);
+	var connectToPod = function (url, whenDone) {
+		// For now we're going to assume the URL has no path
+		// so we can just use it as the origin.  
+		
+	}
+
+	var disconnectFromPod = function (m) {
+		
+	}
+
+	var sendToPod = function (m) {
+		podiframe.contentWindow.postMessage(m, podOrigin);
+		console.log("login>>", m);
+	}
 
 	// 
 	// APPEARANCE
@@ -130,7 +162,10 @@ function main() {
 
 
 	var b = document.body;
-	while(b.firstChild) { b.removeChild(b.firstChild) }
+
+	var errorMessageElement = document.getElementById("error");
+	errorMessageElement.style.display = "none";
+
 	var d = document.createElement("div");
 	d.innerHTML = "<p>Waiting.</p>";
 	document.body.appendChild(d)
@@ -199,3 +234,6 @@ function onready() {
 }
 
 onready();
+
+console.log("Parent", parent);
+console.log("Parent", parent);

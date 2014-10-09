@@ -1,3 +1,4 @@
+"use strict";
 
 function main() {
 
@@ -12,6 +13,10 @@ function main() {
 
 	var appConfig = null; 
 
+	var connected = false;
+	var onConnected = null;
+	var iframeTimeout = null;
+
 	var sendToApp = function (m) {
 		console.log("<<login", m);
 		app.postMessage(m, "*");   // appOrigin?
@@ -20,6 +25,13 @@ function main() {
 	window.addEventListener("message", function(event) {
 
 		/*
+		  SEES MESSAGES COMING FROM BOTH SIDES.
+		  
+		  For now use toPod:true or toApp:true to
+		  pass things through.   Later, maybe we can
+		  use origins?
+
+
 		console.log('>>RAWlogin', event.data, event.origin);
 
 		if (appOrigin === "*") {
@@ -32,11 +44,11 @@ function main() {
 		}
 		*/
 
-		console.log('>>login', event.data);
+		console.log('>>login<<', event.data);
 
 		var message = event.data
 		
-		if (message.op == "options") {
+		if (message.op === "options") {
 
 			appConfig = message.data;
 
@@ -55,6 +67,11 @@ function main() {
 			}
 			return
 		} 
+
+		if (message.op == "awake") {
+			onConnected();
+			// PASS THIS ON, do not return
+		}
 
 		// if not logged in, is this an error, or is it queued?
 
@@ -79,39 +96,49 @@ function main() {
 	var podorigin = "*";	// for now
 	var connectToPod = function (url, whenDone) {
 
+		var iframeStart = Date.now();
+		var timeout;
+
+		setConnectionStatus('loading iframe');
+		onConnected = function () {
+			connected = true;
+			if (timeout) { clearTimeout(timeout); }
+			console.log('x', Date.now()-iframeStart, 'awake');
+			setConnectionStatus('pod iframe running');
+			if (whenDone) whenDone();
+		}
+
 		podURL = url;
 
-		var podframeurl = podURL+"/.well-known/podlogin.html";
+		var podframeurl = podURL+"/_login_iframe.html";
 		// during testing
-		podframeurl = "podlogin.html";
-
-		window.addEventListener("message", function(event) {
-
-			if (podorigin === "*" && event.origin === podorigin) {
-				console.log("login<< ", event.data);
-				
-				if (event.data.op === "awake") {
-					podorigin = event.origin;
-					whenDone();
-					return;
-				}
-			
-				sendToApp(event.data);
-			}
-
-		});
-
+		//podframeurl = "podlogin.html";
+		console.log(0);
 		poddiv = document.createElement("div");
 		podiframe = document.createElement("iframe");
+		// only called on unparsable URL; things like 404 are still a load
+		podiframe.addEventListener("error", function(e) {
+			console.log(Date.now()-iframeStart, 'iframe error', e);
+		});
+		podiframe.addEventListener("load", function(e) {
+			console.log(Date.now()-iframeStart, 'iframe loaded', e);
+			timeout = setTimeout(function() {
+				setConnectionStatus('failed', podframeurl);
+			}, 500);
+		});
+		console.log('GET', podframeurl);
 		podiframe.setAttribute("src", podframeurl);
 		podiframe.style.width = "1px";
 		podiframe.style.height = "1px";
 		podiframe.style.overflow = "hidden";
 		poddiv.appendChild(podiframe);
 		document.body.appendChild(poddiv);
+		console.log(1);
 	}
 
 	var disconnectFromPod = function (m) {
+		connected = false;
+		// sendToApp({op:"logout"});
 		document.body.removeChild(poddiv);
 	}
 
@@ -238,29 +265,24 @@ function main() {
 		if (podurl == "") return;
 		console.log('got url', podurl);
 		document.getElementById('podurlprompt').style.display="none";
-		document.getElementById('podprogress').style.display="block";
-		document.getElementById('podprogress').innerHTML = "Connecting...";
-		var out = document.getElementById('selectedpodurl');
-		var now = Date.now();
-		var tx = podurl;
-		console.log(podurl, now, tx);
 
+		var out = document.getElementById('selectedpodurl');
 		while (out.firstChild) { out.removeChild(out.firstChild); }
-		out.appendChild(document.createTextNode(tx));
-			//.innerHTML="<"+podurl+">";
-		//document.getElementById('selectedpodurl').innerHTML="<"+podurl+">";
+		out.appendChild(document.createTextNode(podurl));
+
 		document.getElementById('selectedpod').style.display="block";
-		connectToPod(podurl, function() {
-			document.getElementById('podprogress').style.display="none";
-			// sendToApp(op:'connected-to-pod');  // but not necessary authenticated so what's the point?
-		});
+		disconnectFromPod();
+		connectToPod(podurl);
 	};
 	document.getElementById('changepodbutton').addEventListener("click", function(e) {
 		document.getElementById('podurlprompt').style.display="block";
 		document.getElementById('selectedpod').style.display="none";
-		disconnectFromPod();
 	});
 	panel.style.display = "none";
+
+	// When we connect to the pod, if we're not authenticated, then
+	// give the user a [Login] button which does a window.open($pod/_login)
+	//
 
 	/*
 		button = document.createElement('button');
@@ -273,6 +295,23 @@ function main() {
 
 	// maybe tell them if we're already logged in?
 	sendToApp({op:"send-options"});
+
+	var setConnectionStatus = function(status, url) {
+		if (status === "pod iframe running") {
+			document.getElementById('podprogress').style.display="block";
+			document.getElementById('podprogress').innerHTML = "Connected";
+		} else if (status === "no pod selected") {
+			// document.getElementById('podprogress').style.display="none";
+			document.getElementById('podprogress').innerHTML = "Please Select a Pod";
+		} else if (status === "loading iframe") {
+			document.getElementById('podprogress').style.display="block";
+			document.getElementById('podprogress').innerHTML = "Connecting...";
+		} else if (status === "failed") {
+			document.getElementById('podprogress').style.display="block";
+			document.getElementById('podprogress').innerHTML = "Unable to load <a href='"+url+"'>"+url;
+		}
+	}
+
 }
 
 function onready() {

@@ -55,6 +55,10 @@
 		that.callbacks = {};
 		that.callbackHandleCount = 0;
 		that.options = options || {};
+		that.loggedInURL = null;
+		that.onLoginCallbacks = [];
+		that.onLogoutCallbacks = [];
+		
 
 		window.addEventListener("message", function(event) {
 			//console.log("got message, checking origin", event);
@@ -77,8 +81,29 @@
 
 			if (event.data.op === "awake") {
 				that.connected = true;
-				// awake and logged in aren't the same thing, but....
-				if (that.onLogin) that.onLogin();
+				return;
+			}
+			
+			console.log(90);
+			if (event.data.op === "login") {
+				console.log(900);
+				that.loggedInURL = event.data.podURL;
+				if (!that.loggedInURL) {
+					throw new Error("bad protocol from pod frame");
+				}
+				console.log('callbacks', that.onLoginCallbacks);
+				that.onLoginCallbacks.forEach(function(cb) {
+					cb();
+				});
+				return;
+			}
+			console.log(91);
+
+			if (event.data.op === "logout") {
+				that.loggedInURL = event.data.podURL;
+				that.onLogoutCallbacks.forEach(function(cb) {
+					cb();
+				});
 				return;
 			}
 
@@ -222,5 +247,35 @@
 				   });
 	}
 
+
+	pod.onLogin = function(callback) {
+		if (!callback) { 
+			throw new Error("undefined argument");
+		}
+		if (this.loggedInURL === null) {
+			this.onLoginCallbacks.push(callback);
+			console.log(93, this.onLoginCallbacks);
+		} else {
+			console.log(92, callback);
+			callback();
+		}
+	}
+
+
+	pod.onLogout = function(callback) {
+		if (!callback) { 
+			throw new Error("undefined argument");
+		}
+		if (this.loggedInURL !== null) {
+			this.onLogoutCallbacks.push(callback);
+		} else {
+			callback();
+		}
+	}
+
+	pod.getUserId = function() {
+		return this.loggedInURL;
+	}
+								
 
 })(typeof exports === 'undefined'? this['crosscloud']={}: exports);

@@ -5,6 +5,9 @@
   for CORS.  iframe.js looks for it there by loading
   $pod/.well-known/podlogin.html (and maybe podlogin.$pod ?)
 
+
+  TODO: figure out if we can do meaningful checks on origins
+
 */
 
 function main() {
@@ -13,62 +16,34 @@ function main() {
 	// MESSAGE PASSING TO LOGIN INFRAME (OUR PARENT)
 	//
 
-	var loginOrigin = null;
-	var login = null;
-
-	var loginConfig = null; 
-	var previousMessageSeq = -1;
-
-	var sendToLogin = function (m) {
-
-		// only occurs in debugging
-		if (login === null) { return; }
-
-		//console.log("isending",m,loginOrigin);
-		login.postMessage(m, loginOrigin);
-		console.log("<<login", m);
+	var sendToApp = function (m) {
+		m.toApp = true;
+		console.log("<<podlogin", m);
+		parent.postMessage(m, "*");
 	}
 
-	var mode = "icon";
-
 	window.addEventListener("message", function(event) {
-
-		if (loginOrigin === null) {
-			loginOrigin = event.origin;
-			// yes, it's really the STRING "null" when coming from 
-			// file:/// in firefox
-			if (loginOrigin == "null") loginOrigin = "*";
-			login = event.source;
-			d.innerHTML = ""
-		} else if (loginOrigin === "*") {
-			// pass
-		} else if (event.origin !== loginOrigin) {
-			return;
-		}
 
 		console.log('>>podlogin ', event.data);
 
 		var message = event.data
 		
-		if (message.seq) {
-			if (message.seq === previousMessageSeq) {
-				return;
-			} else {
-				previousMessageSeq = message.seq;
-			}
-		}
-		
-		if (message.op == "podlogin-ping" {
-			sendToLogin({op:"podlogin-pong", inResponseTo:message.seq});
+		if (message.op === "pop") {
+			console.log("POP");
+			window.open("http://www.w3.org/");
+			// fails because of pop-up blockers; needs to be in event tree?
+			return;
 		}
 
 		console.log('podlogin UNHANDLED', message);
-
 	}, false);
 
+	sendToApp({op:"awake"});
 };
 
 
+// we don't even really need the DOM in this version, but we might at
+// some point be displaying some pod status info ourselves.
 function onready() {
 	if (document.readyState == 'complete' ||
 		document.readystate == 'interactive') {

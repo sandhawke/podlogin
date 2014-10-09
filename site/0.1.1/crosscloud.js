@@ -51,6 +51,7 @@
 	
 		var that = this;
 
+		that.connected = false;
 		that.callbacks = {};
 		that.callbackHandleCount = 0;
 		that.options = options || {};
@@ -70,7 +71,14 @@
 			}
 
 			if (event.data.op === "send-options") {
-				that._send({op:"options", data:that.options});
+				that._sendToLogin({op:"options", data:that.options});
+				return;
+			}
+
+			if (event.data.op === "awake") {
+				that.connected = true;
+				// awake and logged in aren't the same thing, but....
+				if (that.onLogin) that.onLogin();
 				return;
 			}
 
@@ -156,9 +164,22 @@
 		s.height = 2+"px";
 	}
 
-	pod._send = function(message) {
-		console.log("app>> ", message);
+	pod._sendToLogin = function(message) {
+		console.log("apptoLogin>> ", message);
 		this.iframe.contentWindow.postMessage(message, safeOrigin);
+	}
+
+	pod._sendToPod = function(message) {
+		console.log("appToPod>> ", message);
+		message.toPod = true;
+		console.log('this.connected?', this.connected);
+		if (this.connected) {
+			//this.iframe.contentWindow.postMessage(message, safeOrigin);
+			this.iframe.contentWindow.postMessage(message, "*");
+		} else {
+			// ha ha ha -- someone better handle this better!
+			alert('pod._send called when pod not connected');
+		}
 	}
 
 	pod._newCallback = function(cb) {
@@ -168,9 +189,9 @@
 
 
 	pod.test = function(a) {
-		//console.log("a was",a);
+		console.log("a was",a);
+		this._sendToPod({op:"pop"});
 	}
-
 
 	pod.search = function(search) {
 		var msg = { op:"search" };
@@ -184,18 +205,18 @@
 			msg.maxCallsPerSecond = search.maxCallsPerSecond;
 		}
 
-		this._send(msg);
+		this._sendToPod(msg);
 	}
 
 	pod.push = function(page, callback) {
-		this._send({op:"push", 
+		this._sendToPod({op:"push", 
 					data: page, 
 					callback:this._newCallback(callback)
 				   });
 	}
 
 	pod.watch = function(pageOrId, callback) {
-		this._send({op:"pull", 
+		this._sendToPod({op:"pull", 
 					data: pageOrId, 
 					callback:this._newCallback(callback)
 				   });

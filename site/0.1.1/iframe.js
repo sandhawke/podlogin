@@ -19,14 +19,20 @@ function main() {
 
 	window.addEventListener("message", function(event) {
 
+		/*
+		console.log('>>RAWlogin', event.data, event.origin);
+
 		if (appOrigin === "*") {
 			appOrigin = event.origin;
 			if (appOrigin == "null") appOrigin = "*";   // file: in firefox
 		} else if (event.origin !== appOrigin) {
 			return; // wrong origin, someone is messing around
+			// (might just be from the pod, in which case we handle
+			// it with a different EventListener)
 		}
+		*/
 
-		console.log('>>login ', event.data);
+		console.log('>>login', event.data);
 
 		var message = event.data
 		
@@ -52,8 +58,13 @@ function main() {
 
 		// if not logged in, is this an error, or is it queued?
 
-		//sendToPod(message);
-		console.log('UNHANDLED', message);
+		if (message.toPod) {
+			sendToPod(message);
+		} else if (message.toApp) {
+			sendToApp(message);
+		} else {
+			console.log('UNHANDLED', message);
+		}
 
 	}, false);
 
@@ -64,24 +75,49 @@ function main() {
 
 	var podURL = "";
 	var poddiv = document.createElement("div");
-	document.body.appendChild(poddiv);
+	var podiframe = document.body.appendChild(poddiv);
+	var podorigin = "*";	// for now
 	var connectToPod = function (url, whenDone) {
-		// For now we're going to assume the URL has no path
-		// so we can just use it as the origin.  
-		
-		// TODO
-		whenDone();
-		//setTimeout(whenDone, 1000);
+
+		podURL = url;
+
+		var podframeurl = podURL+"/.well-known/podlogin.html";
+		// during testing
+		podframeurl = "podlogin.html";
+
+		window.addEventListener("message", function(event) {
+
+			if (podorigin === "*" && event.origin === podorigin) {
+				console.log("login<< ", event.data);
+				
+				if (event.data.op === "awake") {
+					podorigin = event.origin;
+					whenDone();
+					return;
+				}
+			
+				sendToApp(event.data);
+			}
+
+		});
+
+		poddiv = document.createElement("div");
+		podiframe = document.createElement("iframe");
+		podiframe.setAttribute("src", podframeurl);
+		podiframe.style.width = "1px";
+		podiframe.style.height = "1px";
+		podiframe.style.overflow = "hidden";
+		poddiv.appendChild(podiframe);
+		document.body.appendChild(poddiv);
 	}
 
 	var disconnectFromPod = function (m) {
-		
-		// TODO
+		document.body.removeChild(poddiv);
 	}
 
 	var sendToPod = function (m) {
 		console.log("login>>", m);
-		podiframe.contentWindow.postMessage(m, podOrigin);
+		podiframe.contentWindow.postMessage(m, podorigin);
 	}
 
 	// 
@@ -100,7 +136,7 @@ function main() {
 			overflow: "scroll",
 			right:"2.5%", 
 			top:"15%", 
-			height:null, // stop it from being constrained
+			height:"20em",   // wild guess  :-(
 			width:"90%"}});
 		render();
 	};							  
@@ -193,10 +229,10 @@ function main() {
 		if (key == 13) {
 			newurl();
 		}
-	}, true);
+	});
 	podurlElement.addEventListener("blur", function(e) {
 		newurl();
-	}, true);
+	});
 	var newurl = function () {
 		var podurl = podurlElement.value;
 		if (podurl == "") return;
@@ -222,6 +258,7 @@ function main() {
 	document.getElementById('changepodbutton').addEventListener("click", function(e) {
 		document.getElementById('podurlprompt').style.display="block";
 		document.getElementById('selectedpod').style.display="none";
+		disconnectFromPod();
 	});
 	panel.style.display = "none";
 
